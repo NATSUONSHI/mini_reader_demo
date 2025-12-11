@@ -1,16 +1,35 @@
-# mini_reader_demo
+mini_reader_demo についての簡単な説明テキスト（そのままコピペ用）👇
 
-A new Flutter project.
+―――――――――――――――――――――
+【概要】
+mini_reader_demo は、Windows 向けのとても小さいテキストビューアです。
+・画面右下に小さなウィンドウで表示
+・背景：ダークカラー（#1F2020）
+・文字色：グレー（#BCBEC4）、フォントサイズ 13
+・マウスホイール 1 回で少しだけスクロール（読みやすいように調整）
+・スクロールバーは見えませんが、右側をドラッグするとスクロールできます
+・テキストファイルごとに「前回のスクロール位置」を記憶し、次回起動時に続きから読めます
+・Ctrl + Shift を押すと、ウィンドウがすぐ最小化されます（簡易ボスキー）
 
-## Getting Started
+―――――――――――――――――――――
+【使い方】
 
-This project is a starting point for a Flutter application.
+1. アプリを起動すると、デフォルトで設定されているテキストファイルを読み込みます。
+2. ウィンドウ左上の小さな「O」をクリックすると、ファイル選択ダイアログが開きます。
+3. 読みたい .txt ファイルを選択すると、その内容が表示されます。
+4. 読み進めると、自動的にスクロール位置が保存されます。
+5. アプリを閉じて再度起動しても、同じファイルなら前回の位置から再開されます。
+6. 急いで隠したいときは、キーボードで「Ctrl + Shift」を押すとウィンドウが最小化されます。
 
-A few resources to get you started if this is your first Flutter project:
+―――――――――――――――――――――
+【起動方法（開発環境）】
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1. Flutter 環境をセットアップし、Windows デスクトップを有効化します。
+2. プロジェクトのルートフォルダで以下を実行します：
+   flutter pub get
+3. Windows 版として起動します：
+   flutter run -d windows
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+※ ビルド済みの exe を配布する場合は、
+flutter build windows
+でビルドした実行ファイルを配布してください。
