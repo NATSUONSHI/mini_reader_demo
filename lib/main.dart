@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,22 +18,25 @@ Future<void> main() async {
   runApp(const MiniViewerApp());
 }
 
-/// 自定义滚动物理：每次用户滚动 ≈ 固定 2 行
+/// 自定义滚动物理：每次用户滚动 ≈ 固定若干行（跟当前行高联动）
 class GentleScrollPhysics extends ClampingScrollPhysics {
-  const GentleScrollPhysics({super.parent});
+  final double lineHeight;
+
+  const GentleScrollPhysics({required this.lineHeight, super.parent});
 
   @override
   GentleScrollPhysics applyTo(ScrollPhysics? ancestor) {
-    return GentleScrollPhysics(parent: buildParent(ancestor));
+    return GentleScrollPhysics(
+      lineHeight: lineHeight,
+      parent: buildParent(ancestor),
+    );
   }
 
   @override
   double applyPhysicsToUserOffset(ScrollMetrics position, double offset) {
-    // 你的字体是 fontSize: 13, height: 1.4
-    // 粗略估算每行高度（可以按手感微调）
-    const double lineHeight = 18.0;
-    const double linesPerTick = 2.0; // 希望一次滚轮 ≈ 2 行
-    const double step = lineHeight * linesPerTick; // ≈ 36 像素
+    // 想要每次滚轮 ≈ 2 行
+    const double linesPerTick = 2.0;
+    final double step = lineHeight * linesPerTick;
 
     if (offset == 0) return 0;
 
@@ -100,6 +104,9 @@ class _MiniViewerPageState extends State<MiniViewerPage> {
   String? _currentPath = defaultFilePath;
 
   String _content = '加载中……';
+
+  // 当前字号（支持 Ctrl + 滚轮缩放）
+  double _fontSize = 13.0;
 
   // 键盘监听使用的 FocusNode
   final FocusNode _focusNode = FocusNode();
@@ -237,10 +244,39 @@ class _MiniViewerPageState extends State<MiniViewerPage> {
     }
   }
 
+  /// 检测 Ctrl + 鼠标滚轮，调整字号
+  void _handlePointerSignal(PointerSignalEvent signal) {
+    if (signal is! PointerScrollEvent) return;
+
+    // 是否按着 Ctrl
+    final keys = HardwareKeyboard.instance.logicalKeysPressed;
+    final isCtrlPressed =
+        keys.contains(LogicalKeyboardKey.controlLeft) ||
+        keys.contains(LogicalKeyboardKey.controlRight) ||
+        keys.contains(LogicalKeyboardKey.control);
+
+    if (!isCtrlPressed) return;
+
+    // 滚轮向上（dy < 0）放大，向下（dy > 0）缩小
+    final dy = signal.scrollDelta.dy;
+
+    setState(() {
+      if (dy < 0) {
+        _fontSize += 1.0;
+      } else if (dy > 0) {
+        _fontSize -= 1.0;
+      }
+      // 限制字号范围
+      _fontSize = _fontSize.clamp(8.0, 30.0);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     const bgColor = Color(0xFF1F2020);
     const textColor = Color(0xFFBCBEC4);
+
+    final double lineHeight = _fontSize * 1.4;
 
     return RawKeyboardListener(
       focusNode: _focusNode,
@@ -249,30 +285,34 @@ class _MiniViewerPageState extends State<MiniViewerPage> {
       child: Scaffold(
         body: Container(
           color: bgColor,
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.zero,
           child: Stack(
             children: [
-              // 监听滚动结束，保存 offset
-              NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  if (notification is ScrollEndNotification) {
-                    _saveCurrentOffset();
-                  }
-                  return false; // 不拦截
-                },
-                child: Scrollbar(
-                  controller: _scrollController,
-                  interactive: true,
-                  child: SingleChildScrollView(
+              // 捕获鼠标滚轮（包括 Ctrl + 滚轮 放大缩小）
+              Listener(
+                onPointerSignal: _handlePointerSignal,
+                child: NotificationListener<ScrollNotification>(
+                  // 监听滚动结束，保存 offset
+                  onNotification: (notification) {
+                    if (notification is ScrollEndNotification) {
+                      _saveCurrentOffset();
+                    }
+                    return false; // 不拦截
+                  },
+                  child: Scrollbar(
                     controller: _scrollController,
-                    physics: const GentleScrollPhysics(),
-                    child: SelectableText(
-                      _content,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: textColor,
-                        height: 1.4,
-                        fontFamily: 'Consolas',
+                    interactive: true,
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      physics: GentleScrollPhysics(lineHeight: lineHeight),
+                      child: SelectableText(
+                        _content,
+                        style: TextStyle(
+                          fontSize: _fontSize,
+                          color: textColor,
+                          height: 1.4,
+                          fontFamily: 'Consolas',
+                        ),
                       ),
                     ),
                   ),
@@ -281,8 +321,8 @@ class _MiniViewerPageState extends State<MiniViewerPage> {
 
               // 左上角的小点按钮（打开文件）
               Positioned(
-                top: 2,
-                left: 2,
+                top: 0,
+                left: 0,
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
